@@ -181,6 +181,27 @@ info.SetFilterFormInputWidth(w int)
 ```go
 info.SetQueryFilterFn(func(param parameter.Parameters, conn db.Connection) (ids []string, stopQuery bool) {
     // 根据参数与连接对象返回表格筛选id，stopQuery代表是否停止框架逻辑的筛选，是的话直接则返回当前结果
+    // 以下为简单示例，在 my_table 表中模糊匹配筛选 name 和 description 字段数据
+    name := param.GetFieldValue("name")
+    description := param.GetFieldValue("description")
+    if name == "" && description == "" {
+        return nil, false // 无查询条件，走默认
+    }
+
+    // 使用原生 SQL 查询
+    sqlStr := "SELECT id FROM my_table WHERE name LIKE ? AND description LIKE ?"
+    rows, err := conn.Query(sqlStr, "%"+name+"%", "%"+description+"%")
+    if err != nil {
+        return nil, false
+    }
+
+    for _, row := range rows {
+        id := row["id"].(int64)
+        ids = append(ids, strconv.FormatInt(id, 10))
+    }
+
+    // 返回主键列表，并停止框架后续查询
+    return ids, true
 })
 ```
 
